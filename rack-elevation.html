@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1e1e1c" media="(prefers-color-scheme: dark)">
+<title>AV Rack Elevation Designer</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-primary:#ffffff;--bg-secondary:#f5f5f3;--bg-tertiary:#eeece8;
+  --bg-info:#e6f1fb;--bg-success:#eaf3de;--bg-warning:#faeeda;--bg-danger:#fcebeb;
+  --text-primary:#1a1a18;--text-secondary:#6b6b68;--text-tertiary:#9e9e9b;
+  --text-info:#185fa5;--text-success:#3b6d11;--text-warning:#854f0b;--text-danger:#a32d2d;
+  --border:rgba(0,0,0,0.10);--border-md:rgba(0,0,0,0.18);
+  --radius-sm:6px;--radius-md:10px;--radius-lg:14px;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --topbar-h:52px;--tabbar-h:38px;
+  --lib-w:260px;--props-w:240px;
+  --rack-frame:#2d2d2d;--rack-rail:#1a1a1a;
+  --rack-slot-empty:#e8e8e6;--rack-slot-hover:#d0e8ff;--rack-slot-drop:#93c5fd;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg-primary:#1e1e1c;--bg-secondary:#2a2a28;--bg-tertiary:#252523;
+    --bg-info:#0c447c22;--bg-success:#27500a22;--bg-warning:#63380622;--bg-danger:#791f1f22;
+    --text-primary:#f0ede6;--text-secondary:#a8a8a4;--text-tertiary:#6b6b68;
+    --text-info:#85b7eb;--text-success:#97c459;--text-warning:#fac775;--text-danger:#f09595;
+    --border:rgba(255,255,255,0.08);--border-md:rgba(255,255,255,0.16);
+    --rack-slot-empty:#3a3a38;--rack-slot-hover:#1a3a5c;--rack-slot-drop:#2563eb55;
+  }
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font);background:var(--bg-tertiary);color:var(--text-primary);display:flex;flex-direction:column}
+
+/* ── Top Bar ── */
+#top-bar{
+  height:var(--topbar-h);display:flex;align-items:center;gap:8px;
+  padding:0 12px;background:var(--bg-primary);border-bottom:1px solid var(--border);
+  flex-shrink:0;overflow:hidden;
+}
+#top-bar .app-logo{font-size:15px;font-weight:700;letter-spacing:-0.3px;white-space:nowrap;margin-right:4px}
+#top-bar .sep{width:1px;height:20px;background:var(--border-md);flex-shrink:0}
+.meta-input{
+  font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--bg-secondary);color:var(--text-primary);font-family:var(--font);outline:none;
+  min-width:0;
+}
+.meta-input:focus{border-color:var(--text-info);background:var(--bg-primary)}
+#inp-proj-name{width:140px}
+#inp-client{width:110px}
+#inp-engineer{width:100px}
+#top-actions{display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0}
+.btn{
+  font-size:12px;font-weight:500;padding:5px 11px;border-radius:var(--radius-sm);
+  border:1px solid var(--border-md);cursor:pointer;background:var(--bg-secondary);
+  color:var(--text-primary);font-family:var(--font);white-space:nowrap;
+  transition:background 0.15s,opacity 0.15s;
+}
+.btn:hover{background:var(--bg-tertiary)}
+.btn-primary{background:var(--text-primary);color:var(--bg-primary);border-color:var(--text-primary)}
+.btn-primary:hover{opacity:0.85}
+.btn-danger{background:var(--bg-danger);color:var(--text-danger);border-color:rgba(163,45,45,0.3)}
+#save-badge{
+  font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;
+  background:var(--bg-success);color:var(--text-success);opacity:0;transition:opacity 0.3s;
+  pointer-events:none;
+}
+
+/* Export dropdown */
+.export-wrap{position:relative}
+#export-dropdown{
+  position:absolute;top:calc(100% + 4px);right:0;min-width:160px;
+  background:var(--bg-primary);border:1px solid var(--border-md);border-radius:var(--radius-md);
+  box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:200;overflow:hidden;
+}
+#export-dropdown button{
+  display:block;width:100%;text-align:left;padding:9px 14px;
+  font-size:13px;background:none;border:none;cursor:pointer;color:var(--text-primary);
+  font-family:var(--font);
+}
+#export-dropdown button:hover{background:var(--bg-secondary)}
+
+/* ── Rack Tab Bar ── */
+#rack-tab-bar{
+  height:var(--tabbar-h);display:flex;align-items:center;gap:4px;
+  padding:0 12px;background:var(--bg-primary);border-bottom:1px solid var(--border);
+  overflow-x:auto;scrollbar-width:none;flex-shrink:0;
+}
+#rack-tab-bar::-webkit-scrollbar{display:none}
+.rack-tab{
+  font-size:12px;font-weight:500;padding:4px 10px;border-radius:var(--radius-sm);
+  border:1px solid transparent;cursor:pointer;background:none;color:var(--text-secondary);
+  font-family:var(--font);white-space:nowrap;display:flex;align-items:center;gap:5px;
+}
+.rack-tab:hover{background:var(--bg-secondary)}
+.rack-tab.active{background:var(--bg-secondary);border-color:var(--border-md);color:var(--text-primary);font-weight:600}
+.rack-tab .tab-close{
+  font-size:14px;line-height:1;opacity:0.5;padding:0 1px;
+}
+.rack-tab .tab-close:hover{opacity:1;color:var(--text-danger)}
+#btn-add-rack-tab{
+  font-size:18px;line-height:1;padding:2px 8px;border:1px dashed var(--border-md);
+  border-radius:var(--radius-sm);cursor:pointer;background:none;color:var(--text-tertiary);
+  font-family:var(--font);
+}
+#btn-add-rack-tab:hover{color:var(--text-primary);border-color:var(--text-primary)}
+
+/* ── Workspace ── */
+#workspace{display:flex;flex:1;overflow:hidden}
+
+/* ── Library Panel ── */
+#library-panel{
+  width:var(--lib-w);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;
+  background:var(--bg-primary);
+}
+#lib-header{padding:10px 12px 6px;border-bottom:1px solid var(--border);flex-shrink:0}
+#lib-search{
+  width:100%;font-size:12px;padding:6px 10px;
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--bg-secondary);color:var(--text-primary);font-family:var(--font);outline:none;
+}
+#lib-search:focus{border-color:var(--text-info)}
+#lib-list{flex:1;overflow-y:auto;padding:6px 8px}
+#lib-list::-webkit-scrollbar{width:4px}
+#lib-list::-webkit-scrollbar-thumb{background:var(--border-md);border-radius:2px}
+.lib-category{margin-bottom:4px}
+.lib-cat-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 6px;font-size:11px;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.5px;color:var(--text-tertiary);cursor:pointer;
+  border-radius:var(--radius-sm);user-select:none;
+}
+.lib-cat-header:hover{background:var(--bg-secondary)}
+.lib-cat-header .cat-arrow{transition:transform 0.15s;font-size:9px}
+.lib-cat-header.collapsed .cat-arrow{transform:rotate(-90deg)}
+.lib-cat-items{padding:0 0 4px 0}
+.lib-cat-items.hidden{display:none}
+.lib-item{
+  display:flex;align-items:center;gap:7px;padding:6px 8px;
+  border-radius:var(--radius-sm);cursor:grab;user-select:none;
+  border:1px solid transparent;margin-bottom:2px;
+}
+.lib-item:hover{background:var(--bg-secondary);border-color:var(--border)}
+.lib-item:active{cursor:grabbing}
+.lib-item.dragging{opacity:0.4}
+.lib-item-swatch{width:8px;height:28px;border-radius:2px;flex-shrink:0}
+.lib-item-info{min-width:0;flex:1}
+.lib-item-name{font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-item-sub{font-size:10px;color:var(--text-tertiary);margin-top:1px}
+.lib-item-u{font-size:10px;color:var(--text-tertiary);flex-shrink:0;font-weight:600}
+#lib-footer{padding:8px;border-top:1px solid var(--border);flex-shrink:0}
+#btn-add-custom{width:100%}
+
+/* ── Rack Canvas ── */
+#rack-canvas-area{
+  flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;
+  padding:16px;background:var(--bg-tertiary);
+}
+#rack-canvas-area::-webkit-scrollbar{width:6px;height:6px}
+#rack-canvas-area::-webkit-scrollbar-thumb{background:var(--border-md);border-radius:3px}
+#rack-controls-bar{
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;
+  background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:8px 12px;width:100%;max-width:580px;
+}
+#rack-controls-bar label{font-size:11px;color:var(--text-secondary);margin-right:2px}
+.rack-ctrl-input{
+  font-size:12px;padding:4px 7px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--bg-secondary);color:var(--text-primary);font-family:var(--font);outline:none;
+}
+.rack-ctrl-input:focus{border-color:var(--text-info)}
+#inp-rack-name{width:130px}
+#sel-rack-units{width:70px}
+#sel-rack-dir{width:120px}
+#view-toggle-wrap{margin-left:auto;display:flex;gap:4px}
+.view-btn{font-size:11px;padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-md);cursor:pointer;background:var(--bg-secondary);color:var(--text-secondary);font-family:var(--font)}
+.view-btn.active{background:var(--text-primary);color:var(--bg-primary);border-color:var(--text-primary)}
+#no-rack-msg{color:var(--text-tertiary);font-size:14px;text-align:center;margin-top:48px}
+#rack-2d-view{display:flex;flex-direction:column;align-items:center;width:100%}
+#rack-3d-view{width:100%;max-width:580px}
+#three-canvas{width:100%;height:500px;border-radius:var(--radius-md);border:1px solid var(--border);display:block}
+.three-error{color:var(--text-danger);font-size:13px;padding:16px;text-align:center}
+
+/* SVG rack */
+#rack-svg-wrap{
+  background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:16px;overflow:visible;
+}
+#rack-svg{overflow:visible}
+#rack-svg .slot-empty{cursor:pointer;transition:fill 0.1s}
+#rack-svg .slot-empty:hover{fill:var(--rack-slot-hover)}
+#rack-svg .slot-drop-target{fill:var(--rack-slot-drop) !important}
+#rack-svg .rack-item rect{cursor:pointer;transition:filter 0.1s}
+#rack-svg .rack-item:hover rect{filter:brightness(1.12)}
+#rack-svg .rack-item.selected rect{stroke:#fff;stroke-width:2}
+#rack-svg .rack-item{cursor:grab}
+#rack-svg .rack-item:active{cursor:grabbing}
+
+/* ── Props Panel ── */
+#props-panel{
+  width:var(--props-w);border-left:1px solid var(--border);
+  overflow-y:auto;flex-shrink:0;background:var(--bg-primary);
+}
+#props-panel::-webkit-scrollbar{width:4px}
+#props-panel::-webkit-scrollbar-thumb{background:var(--border-md);border-radius:2px}
+.props-section{padding:12px;border-bottom:1px solid var(--border)}
+.props-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-tertiary);margin-bottom:10px}
+.prop-row{margin-bottom:8px}
+.prop-label{font-size:11px;color:var(--text-secondary);margin-bottom:3px;display:block}
+.prop-input{
+  width:100%;font-size:12px;padding:5px 8px;border:1px solid var(--border);
+  border-radius:var(--radius-sm);background:var(--bg-secondary);color:var(--text-primary);
+  font-family:var(--font);outline:none;
+}
+.prop-input:focus{border-color:var(--text-info)}
+textarea.prop-input{resize:vertical;min-height:52px;font-size:12px}
+.prop-static{font-size:12px;color:var(--text-primary)}
+.prop-static span{color:var(--text-secondary);font-size:11px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-card{background:var(--bg-secondary);border-radius:var(--radius-sm);padding:8px 10px}
+.stat-val{font-size:18px;font-weight:600;letter-spacing:-0.4px}
+.stat-lbl{font-size:10px;color:var(--text-secondary);margin-top:1px}
+.usage-bar{height:6px;border-radius:3px;background:var(--border);overflow:hidden;margin:8px 0 4px}
+.usage-bar-fill{height:100%;border-radius:3px;background:var(--text-success);transition:width 0.3s}
+.usage-bar-fill.warn{background:var(--text-warning)}
+.usage-bar-fill.over{background:var(--text-danger)}
+#props-no-selection{padding:16px 12px;color:var(--text-tertiary);font-size:12px;text-align:center}
+
+/* ── Modal ── */
+#modal-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;
+  display:flex;align-items:center;justify-content:center;
+}
+.modal{
+  background:var(--bg-primary);border:1px solid var(--border-md);border-radius:var(--radius-lg);
+  padding:20px;width:360px;max-width:calc(100vw - 32px);max-height:90vh;overflow-y:auto;
+  box-shadow:0 16px 48px rgba(0,0,0,0.2);
+}
+.modal h2{font-size:15px;font-weight:600;margin-bottom:16px}
+.modal-row{margin-bottom:12px}
+.modal-row label{display:block;font-size:11px;color:var(--text-secondary);margin-bottom:4px}
+.modal-row input,.modal-row select{
+  width:100%;font-size:13px;padding:6px 10px;border:1px solid var(--border-md);
+  border-radius:var(--radius-sm);background:var(--bg-secondary);color:var(--text-primary);
+  font-family:var(--font);outline:none;
+}
+.modal-row input:focus,.modal-row select:focus{border-color:var(--text-info)}
+.modal-row input[type=color]{height:36px;padding:2px 4px;cursor:pointer}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.modal-row.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-row.two-col>div label{display:block;font-size:11px;color:var(--text-secondary);margin-bottom:4px}
+.modal-row.two-col>div input{width:100%;font-size:13px;padding:6px 10px;border:1px solid var(--border-md);border-radius:var(--radius-sm);background:var(--bg-secondary);color:var(--text-primary);font-family:var(--font);outline:none}
+
+/* ── Misc ── */
+.hidden{display:none!important}
+.drag-ghost{
+  position:fixed;pointer-events:none;z-index:999;opacity:0.85;
+  padding:6px 10px;background:var(--bg-primary);border:1px solid var(--border-md);
+  border-radius:var(--radius-sm);font-size:12px;font-weight:500;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);white-space:nowrap;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOP BAR ═══ -->
+<header id="top-bar">
+  <span class="app-logo">⚡ AV Rack</span>
+  <div class="sep"></div>
+  <input id="inp-proj-name" class="meta-input" placeholder="Project name" title="Project name">
+  <input id="inp-client" class="meta-input" placeholder="Client" title="Client name">
+  <input id="inp-engineer" class="meta-input" placeholder="Engineer" title="Engineer name">
+  <div id="top-actions">
+    <span id="save-badge">Saved</span>
+    <button class="btn btn-primary" id="btn-view-toggle">3D View</button>
+    <div class="export-wrap">
+      <button class="btn" id="btn-export-drop">Export ▾</button>
+      <div id="export-dropdown" class="hidden">
+        <button onclick="exportPNG()">📷 PNG Image</button>
+        <button onclick="exportPDF()">📄 PDF + BOM</button>
+        <button onclick="exportCSV()">📊 CSV / BOM</button>
+        <button onclick="exportJSON()">💾 Save JSON</button>
+      </div>
+    </div>
+    <button class="btn" id="btn-import-json">Load JSON</button>
+    <input type="file" id="file-import" accept=".json" class="hidden">
+  </div>
+</header>
+
+<!-- ═══ RACK TAB BAR ═══ -->
+<div id="rack-tab-bar">
+  <button id="btn-add-rack-tab" title="Add rack">+</button>
+</div>
+
+<!-- ═══ WORKSPACE ═══ -->
+<div id="workspace">
+
+  <!-- LEFT: Library -->
+  <aside id="library-panel">
+    <div id="lib-header">
+      <input id="lib-search" type="search" placeholder="Search equipment…" autocomplete="off">
+    </div>
+    <div id="lib-list"></div>
+    <div id="lib-footer">
+      <button class="btn" id="btn-add-custom" style="width:100%">+ Custom Equipment</button>
+    </div>
+  </aside>
+
+  <!-- CENTER: Rack View -->
+  <main id="rack-canvas-area">
+    <div id="no-rack-msg" class="hidden">No racks yet — click <strong>+</strong> above to add one.</div>
+
+    <div id="rack-controls-bar" class="hidden">
+      <label>Name</label>
+      <input id="inp-rack-name" class="rack-ctrl-input" placeholder="Rack name">
+      <label>Size</label>
+      <select id="sel-rack-units" class="rack-ctrl-input">
+        <option value="6">6U</option>
+        <option value="8">8U</option>
+        <option value="12">12U</option>
+        <option value="16">16U</option>
+        <option value="20">20U</option>
+        <option value="24">24U</option>
+        <option value="28">28U</option>
+        <option value="32">32U</option>
+        <option value="36">36U</option>
+        <option value="42" selected>42U</option>
+        <option value="45">45U</option>
+        <option value="48">48U</option>
+      </select>
+      <label>Numbering</label>
+      <select id="sel-rack-dir" class="rack-ctrl-input">
+        <option value="bottom-top">Bottom → Top (1 at bottom)</option>
+        <option value="top-bottom">Top → Bottom (1 at top)</option>
+      </select>
+      <button class="btn btn-danger" id="btn-delete-rack" style="margin-left:auto">Delete Rack</button>
+      <div id="view-toggle-wrap">
+        <button class="view-btn active" id="btn-2d">2D</button>
+        <button class="view-btn" id="btn-3d">3D</button>
+      </div>
+    </div>
+
+    <div id="rack-2d-view" class="hidden">
+      <div id="rack-svg-wrap">
+        <svg id="rack-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+
+    <div id="rack-3d-view" class="hidden">
+      <canvas id="three-canvas"></canvas>
+    </div>
+  </main>
+
+  <!-- RIGHT: Properties -->
+  <aside id="props-panel">
+    <div id="props-no-selection">Click an item in the rack to see its properties.</div>
+    <div id="props-item-section" class="hidden">
+      <div class="props-section">
+        <div class="props-title">Item Properties</div>
+        <div class="prop-row">
+          <label class="prop-label">Label</label>
+          <input id="prop-label" class="prop-input" placeholder="Custom label">
+        </div>
+        <div class="prop-row">
+          <label class="prop-label">Notes</label>
+          <textarea id="prop-notes" class="prop-input" placeholder="Notes…"></textarea>
+        </div>
+        <div class="prop-row">
+          <label class="prop-label">Start U (position)</label>
+          <input id="prop-start-u" class="prop-input" type="number" min="1">
+        </div>
+        <div class="prop-row" id="prop-equip-detail"></div>
+        <button class="btn btn-danger" id="btn-remove-item" style="width:100%;margin-top:4px">Remove from Rack</button>
+      </div>
+    </div>
+    <div id="props-rack-summary" class="hidden">
+      <div class="props-section">
+        <div class="props-title">Rack Summary</div>
+        <div id="rack-usage-bar-wrap">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);margin-bottom:4px">
+            <span id="rack-u-label">0U used</span><span id="rack-u-free">0U free</span>
+          </div>
+          <div class="usage-bar"><div class="usage-bar-fill" id="rack-usage-fill"></div></div>
+        </div>
+        <div class="stat-grid" id="rack-stats-grid"></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ═══ CUSTOM EQUIPMENT MODAL ═══ -->
+<div id="modal-backdrop" class="hidden">
+  <div class="modal" id="modal-custom">
+    <h2 id="modal-title">Add Custom Equipment</h2>
+    <input type="hidden" id="modal-edit-id">
+    <div class="modal-row">
+      <label>Name *</label>
+      <input id="m-name" placeholder="e.g. My Custom Amp" required>
+    </div>
+    <div class="modal-row two-col">
+      <div><label>Manufacturer</label><input id="m-mfr" placeholder="e.g. Crown"></div>
+      <div><label>Model</label><input id="m-model" placeholder="e.g. XTi 1002"></div>
+    </div>
+    <div class="modal-row">
+      <label>Category</label>
+      <select id="m-cat">
+        <option value="amp">Amplifiers &amp; DSPs</option>
+        <option value="video">Video &amp; Display</option>
+        <option value="control">Control Systems</option>
+        <option value="network">Networking &amp; IT</option>
+      </select>
+    </div>
+    <div class="modal-row two-col">
+      <div><label>Rack Units (U) *</label><input id="m-u" type="number" min="1" max="20" value="1"></div>
+      <div><label>Front Panel Color</label><input id="m-color" type="color" value="#444444"></div>
+    </div>
+    <div class="modal-row two-col">
+      <div><label>Power Draw (W)</label><input id="m-power" type="number" min="0" value="0"></div>
+      <div><label>Weight (kg)</label><input id="m-weight" type="number" min="0" step="0.1" value="0"></div>
+    </div>
+    <div class="modal-row two-col">
+      <div><label>Depth (mm)</label><input id="m-depth" type="number" min="0" value="0"></div>
+      <div></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="btn-modal-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-modal-save">Save Equipment</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── A. Data Models & Constants ────────────────────────────────
+
+const STORAGE_KEY = 'rack_elevation_v1';
+
+const CAT_LABELS = {
+  amp:'Amplifiers & DSPs', video:'Video & Display',
+  control:'Control Systems', network:'Networking & IT', custom:'Custom'
+};
+const CAT_COLORS = {
+  amp:'#2563EB', video:'#7C3AED', control:'#D97706', network:'#059669', custom:'#6b7280'
+};
+
+// SVG layout constants
+const RACK_U_PX   = 17;
+const RACK_W_PX   = 300;
+const RAIL_W_PX   = 26;
+const U_LABEL_W   = 34;
+const SVG_PAD_TOP = 36;
+const SVG_PAD_BOT = 12;
+const TOTAL_SVG_W = U_LABEL_W + RAIL_W_PX + RACK_W_PX + RAIL_W_PX + 12;
+
+// ── B. Equipment Library ──────────────────────────────────────
+
+const EQUIPMENT_LIBRARY = [
+  // Amplifiers & DSPs
+  {id:'e01',name:'Crown XTi 2002',manufacturer:'Crown',model:'XTi 2002',category:'amp',uHeight:1,color:'#1d4ed8',powerDraw:500,depth:380,weight:5.9,custom:false},
+  {id:'e02',name:'Crown DCi 4|300',manufacturer:'Crown',model:'DCi 4|300N',category:'amp',uHeight:2,color:'#1e40af',powerDraw:500,depth:464,weight:10.5,custom:false},
+  {id:'e03',name:'QSC CX254',manufacturer:'QSC',model:'CX254',category:'amp',uHeight:2,color:'#1e3a8a',powerDraw:600,depth:457,weight:14.5,custom:false},
+  {id:'e04',name:'QSC PLD4.5',manufacturer:'QSC',model:'PLD4.5',category:'amp',uHeight:2,color:'#1d4ed8',powerDraw:760,depth:458,weight:11.8,custom:false},
+  {id:'e05',name:'Biamp TesiraFORTE AVB',manufacturer:'Biamp',model:'TesiraFORTE AVB',category:'amp',uHeight:1,color:'#2563eb',powerDraw:45,depth:230,weight:2.5,custom:false},
+  {id:'e06',name:'Biamp Tesira SERVER-IO',manufacturer:'Biamp',model:'Tesira SERVER-IO',category:'amp',uHeight:1,color:'#3b82f6',powerDraw:150,depth:265,weight:3.2,custom:false},
+  {id:'e07',name:'Symetrix Radius NX',manufacturer:'Symetrix',model:'Radius NX',category:'amp',uHeight:1,color:'#2563eb',powerDraw:50,depth:225,weight:2.2,custom:false},
+  {id:'e08',name:'Lab.gruppen D 20:4L',manufacturer:'Lab.gruppen',model:'D 20:4L',category:'amp',uHeight:2,color:'#1d4ed8',powerDraw:1200,depth:481,weight:19.5,custom:false},
+  // Video & Display
+  {id:'e09',name:'Extron DTP CrossPoint 84 4K',manufacturer:'Extron',model:'DTP CrossPoint 84 4K',category:'video',uHeight:2,color:'#6d28d9',powerDraw:95,depth:226,weight:3.6,custom:false},
+  {id:'e10',name:'Extron XPA 2001-70V',manufacturer:'Extron',model:'XPA 2001-70V',category:'video',uHeight:1,color:'#7c3aed',powerDraw:350,depth:224,weight:3.2,custom:false},
+  {id:'e11',name:'Crestron HD-MD8X8',manufacturer:'Crestron',model:'HD-MD8X8',category:'video',uHeight:1,color:'#5b21b6',powerDraw:60,depth:229,weight:2.8,custom:false},
+  {id:'e12',name:'Crestron DM-MD8X8',manufacturer:'Crestron',model:'DM-MD8X8-CPU3',category:'video',uHeight:2,color:'#6d28d9',powerDraw:80,depth:229,weight:4.5,custom:false},
+  {id:'e13',name:'BlackMagic ATEM Mini Extreme',manufacturer:'Blackmagic Design',model:'ATEM Mini Extreme',category:'video',uHeight:1,color:'#4c1d95',powerDraw:30,depth:148,weight:0.85,custom:false},
+  {id:'e14',name:'BlackMagic Smart Videohub 40x40',manufacturer:'Blackmagic Design',model:'Smart Videohub 40x40',category:'video',uHeight:2,color:'#5b21b6',powerDraw:65,depth:155,weight:2.1,custom:false},
+  {id:'e15',name:'Kramer VS-44UHD',manufacturer:'Kramer',model:'VS-44UHD',category:'video',uHeight:1,color:'#7c3aed',powerDraw:18,depth:165,weight:1.4,custom:false},
+  {id:'e16',name:'Sony BRC-X400 Controller',manufacturer:'Sony',model:'BRC-X400',category:'video',uHeight:1,color:'#6d28d9',powerDraw:12,depth:152,weight:0.9,custom:false},
+  // Control Systems
+  {id:'e17',name:'Crestron CP4',manufacturer:'Crestron',model:'CP4',category:'control',uHeight:1,color:'#b45309',powerDraw:45,depth:229,weight:2.3,custom:false},
+  {id:'e18',name:'Crestron CP4N',manufacturer:'Crestron',model:'CP4N',category:'control',uHeight:1,color:'#92400e',powerDraw:45,depth:229,weight:2.3,custom:false},
+  {id:'e19',name:'Crestron RMC4',manufacturer:'Crestron',model:'RMC4',category:'control',uHeight:1,color:'#d97706',powerDraw:35,depth:190,weight:1.8,custom:false},
+  {id:'e20',name:'AMX NX-3200',manufacturer:'AMX',model:'NX-3200',category:'control',uHeight:1,color:'#b45309',powerDraw:40,depth:198,weight:2.1,custom:false},
+  {id:'e21',name:'AMX NX-4200',manufacturer:'AMX',model:'NX-4200',category:'control',uHeight:2,color:'#92400e',powerDraw:55,depth:198,weight:3.4,custom:false},
+  {id:'e22',name:'Extron IPCP Pro 550',manufacturer:'Extron',model:'IPCP Pro 550',category:'control',uHeight:1,color:'#d97706',powerDraw:30,depth:198,weight:2.0,custom:false},
+  {id:'e23',name:'RTI XP-8',manufacturer:'RTI',model:'XP-8',category:'control',uHeight:1,color:'#b45309',powerDraw:28,depth:190,weight:1.7,custom:false},
+  // Networking & IT
+  {id:'e24',name:'Cisco SG350-28',manufacturer:'Cisco',model:'SG350-28',category:'network',uHeight:1,color:'#047857',powerDraw:32,depth:257,weight:3.6,custom:false},
+  {id:'e25',name:'Cisco SG350X-48',manufacturer:'Cisco',model:'SG350X-48',category:'network',uHeight:1,color:'#065f46',powerDraw:57,depth:257,weight:5.4,custom:false},
+  {id:'e26',name:'Netgear GS748T',manufacturer:'Netgear',model:'GS748T',category:'network',uHeight:1,color:'#059669',powerDraw:38,depth:254,weight:3.5,custom:false},
+  {id:'e27',name:'Patch Panel 24-port Cat6',manufacturer:'Generic',model:'24-Port Cat6',category:'network',uHeight:1,color:'#374151',powerDraw:0,depth:80,weight:1.2,custom:false},
+  {id:'e28',name:'APC Smart-UPS 1500VA',manufacturer:'APC',model:'Smart-UPS 1500VA',category:'network',uHeight:2,color:'#1f2937',powerDraw:60,depth:432,weight:23.6,custom:false},
+  {id:'e29',name:'Furman M-8Dx',manufacturer:'Furman',model:'M-8Dx',category:'network',uHeight:1,color:'#111827',powerDraw:10,depth:127,weight:1.8,custom:false},
+  {id:'e30',name:'Middle Atlantic RLNK-SW',manufacturer:'Middle Atlantic',model:'RLNK-SW',category:'network',uHeight:1,color:'#1f2937',powerDraw:10,depth:165,weight:1.5,custom:false},
+];
+
+// ── C. App State ──────────────────────────────────────────────
+
+let project = newProject();
+let customEquipment = [];
+let selectedRackId = null;
+let selectedItemId = null;
+let dragPayload = null;
+let threeLoaded = false;
+let threeRenderer = null, threeScene = null, threeCamera = null, threeControls = null;
+let threeAnimId = null;
+let currentView = '2d';
+
+function newProject() {
+  return {
+    id: uid(),
+    name: '',
+    client: '',
+    engineer: '',
+    date: new Date().toISOString().slice(0, 10),
+    racks: []
+  };
+}
+
+function uid() {
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+// ── D. Persistence ────────────────────────────────────────────
+
+let _saveTimer = null;
+function autoSave() {
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ project, customEquipment }));
+      flashSaved();
+    } catch(e) { /* private mode / quota */ }
+  }, 400);
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data.project) project = data.project;
+    if (data.customEquipment) customEquipment = data.customEquipment;
+  } catch(e) { /* corrupt */ }
+}
+
+function flashSaved() {
+  const el = document.getElementById('save-badge');
+  el.style.opacity = '1';
+  setTimeout(() => el.style.opacity = '0', 1400);
+}
+
+// ── E. Equipment Helpers ──────────────────────────────────────
+
+function allEquipment() {
+  return [...EQUIPMENT_LIBRARY, ...customEquipment];
+}
+
+function getEquipment(id) {
+  return allEquipment().find(e => e.id === id);
+}
+
+// ── F. Rack CRUD ──────────────────────────────────────────────
+
+function addRack() {
+  const rack = {
+    id: uid(),
+    name: `Rack ${project.racks.length + 1}`,
+    totalUnits: 42,
+    numberingDir: 'bottom-top',
+    location: '',
+    items: []
+  };
+  project.racks.push(rack);
+  selectedRackId = rack.id;
+  selectedItemId = null;
+  autoSave();
+  buildRackTabBar();
+  renderWorkspace();
+}
+
+function deleteRack(id) {
+  if (!confirm('Delete this rack? This cannot be undone.')) return;
+  project.racks = project.racks.filter(r => r.id !== id);
+  if (selectedRackId === id) {
+    selectedRackId = project.racks[0]?.id || null;
+    selectedItemId = null;
+  }
+  autoSave();
+  buildRackTabBar();
+  renderWorkspace();
+}
+
+function selectRack(id) {
+  selectedRackId = id;
+  selectedItemId = null;
+  currentView = '2d';
+  buildRackTabBar();
+  renderWorkspace();
+}
+
+function getRack(id) {
+  return project.racks.find(r => r.id === id);
+}
+
+function getActiveRack() {
+  return getRack(selectedRackId);
+}
+
+function buildRackTabBar() {
+  const bar = document.getElementById('rack-tab-bar');
+  // Keep the + button at the start
+  bar.innerHTML = '';
+  const addBtn = document.createElement('button');
+  addBtn.id = 'btn-add-rack-tab';
+  addBtn.title = 'Add rack';
+  addBtn.textContent = '+';
+  addBtn.onclick = addRack;
+  bar.appendChild(addBtn);
+
+  project.racks.forEach(rack => {
+    const tab = document.createElement('button');
+    tab.className = 'rack-tab' + (rack.id === selectedRackId ? ' active' : '');
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = rack.name || `Rack`;
+    const closeSpan = document.createElement('span');
+    closeSpan.className = 'tab-close';
+    closeSpan.textContent = '×';
+    closeSpan.title = 'Delete rack';
+    closeSpan.onclick = (e) => { e.stopPropagation(); deleteRack(rack.id); };
+    tab.appendChild(nameSpan);
+    tab.appendChild(closeSpan);
+    tab.onclick = () => selectRack(rack.id);
+    bar.appendChild(tab);
+  });
+}
+
+// ── G. Item CRUD ──────────────────────────────────────────────
+
+function getOccupiedUnits(rack, excludeItemId) {
+  const s = new Set();
+  rack.items.forEach(item => {
+    if (item.id === excludeItemId) return;
+    for (let u = item.startUnit; u < item.startUnit + item.uHeight; u++) s.add(u);
+  });
+  return s;
+}
+
+function isSlotFree(rack, startUnit, uHeight, excludeItemId) {
+  if (startUnit < 1 || startUnit + uHeight - 1 > rack.totalUnits) return false;
+  const occupied = getOccupiedUnits(rack, excludeItemId);
+  for (let u = startUnit; u < startUnit + uHeight; u++) {
+    if (occupied.has(u)) return false;
+  }
+  return true;
+}
+
+function findFirstFreeSlot(rack, uHeight) {
+  for (let u = 1; u <= rack.totalUnits - uHeight + 1; u++) {
+    if (isSlotFree(rack, u, uHeight)) return u;
+  }
+  return null;
+}
+
+function addItemToRack(rackId, equipmentId, startUnit) {
+  const rack = getRack(rackId);
+  const equip = getEquipment(equipmentId);
+  if (!rack || !equip) return;
+  const slot = (startUnit != null && isSlotFree(rack, startUnit, equip.uHeight))
+    ? startUnit
+    : findFirstFreeSlot(rack, equip.uHeight);
+  if (slot == null) { alert('Not enough free space in this rack for this equipment.'); return; }
+  const item = {
+    id: uid(),
+    equipmentId: equip.id,
+    startUnit: slot,
+    uHeight: equip.uHeight,
+    label: equip.name,
+    notes: '',
+    color: equip.color
+  };
+  rack.items.push(item);
+  selectedItemId = item.id;
+  autoSave();
+  renderRackSVG(rack);
+  renderPropsPanel();
+}
+
+function removeItem(rackId, itemId) {
+  const rack = getRack(rackId);
+  if (!rack) return;
+  rack.items = rack.items.filter(i => i.id !== itemId);
+  if (selectedItemId === itemId) selectedItemId = null;
+  autoSave();
+  renderRackSVG(rack);
+  renderPropsPanel();
+}
+
+function moveItem(rackId, itemId, newStartUnit) {
+  const rack = getRack(rackId);
+  const item = rack?.items.find(i => i.id === itemId);
+  if (!item) return;
+  if (!isSlotFree(rack, newStartUnit, item.uHeight, itemId)) return;
+  item.startUnit = newStartUnit;
+  autoSave();
+  renderRackSVG(rack);
+  renderPropsPanel();
+}
+
+function updateItemProp(field, value) {
+  const rack = getActiveRack();
+  if (!rack || !selectedItemId) return;
+  const item = rack.items.find(i => i.id === selectedItemId);
+  if (!item) return;
+  if (field === 'startUnit') {
+    const newU = parseInt(value);
+    if (!isNaN(newU) && isSlotFree(rack, newU, item.uHeight, item.id)) {
+      item.startUnit = newU;
+    }
+  } else {
+    item[field] = value;
+  }
+  autoSave();
+  renderRackSVG(rack);
+}
+
+// ── H. SVG Rack Rendering ─────────────────────────────────────
+
+function uToY(unitNumber, totalUnits, direction) {
+  if (direction === 'bottom-top') {
+    return SVG_PAD_TOP + (totalUnits - unitNumber) * RACK_U_PX;
+  }
+  return SVG_PAD_TOP + (unitNumber - 1) * RACK_U_PX;
+}
+
+function svgYToUnit(y, rack) {
+  const relY = y - SVG_PAD_TOP;
+  if (rack.numberingDir === 'bottom-top') {
+    return rack.totalUnits - Math.floor(relY / RACK_U_PX);
+  }
+  return Math.floor(relY / RACK_U_PX) + 1;
+}
+
+function renderRackSVG(rack) {
+  const svg = document.getElementById('rack-svg');
+  const totalH = SVG_PAD_TOP + rack.totalUnits * RACK_U_PX + SVG_PAD_BOT;
+  svg.setAttribute('width', TOTAL_SVG_W);
+  svg.setAttribute('height', totalH);
+  svg.setAttribute('viewBox', `0 0 ${TOTAL_SVG_W} ${totalH}`);
+  svg.innerHTML = '';
+
+  const xRail1 = U_LABEL_W;
+  const xInner = U_LABEL_W + RAIL_W_PX;
+  const xRail2 = xInner + RACK_W_PX;
+
+  // Rack frame outer rect
+  const frame = svgRect(xRail1, SVG_PAD_TOP, RAIL_W_PX * 2 + RACK_W_PX, rack.totalUnits * RACK_U_PX, '#2a2a2a', '#111');
+  svg.appendChild(frame);
+
+  // Left rail texture
+  for (let i = 0; i < rack.totalUnits; i++) {
+    const y = SVG_PAD_TOP + i * RACK_U_PX;
+    const r = svgRect(xRail1 + 3, y + 2, RAIL_W_PX - 6, RACK_U_PX - 4, '#3a3a3a', '#222');
+    svg.appendChild(r);
+    const r2 = svgRect(xRail2 + 3, y + 2, RAIL_W_PX - 6, RACK_U_PX - 4, '#3a3a3a', '#222');
+    svg.appendChild(r2);
+  }
+
+  // Rack name at top
+  const nameText = document.createElementNS('http://www.w3.org/2000/svg','text');
+  nameText.setAttribute('x', xInner + RACK_W_PX / 2);
+  nameText.setAttribute('y', SVG_PAD_TOP - 8);
+  nameText.setAttribute('text-anchor', 'middle');
+  nameText.setAttribute('font-size', '12');
+  nameText.setAttribute('font-weight', '600');
+  nameText.setAttribute('font-family', 'system-ui,-apple-system,sans-serif');
+  nameText.setAttribute('fill', '#888');
+  nameText.textContent = `${rack.name || 'Rack'} — ${rack.totalUnits}U`;
+  svg.appendChild(nameText);
+
+  // Empty slots & U labels
+  const occupied = getOccupiedUnits(rack, null);
+  for (let u = 1; u <= rack.totalUnits; u++) {
+    const y = uToY(u, rack.totalUnits, rack.numberingDir);
+
+    // U label
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x', xRail1 - 4);
+    lbl.setAttribute('y', y + RACK_U_PX / 2 + 4);
+    lbl.setAttribute('text-anchor', 'end');
+    lbl.setAttribute('font-size', '9');
+    lbl.setAttribute('font-family', 'system-ui,-apple-system,sans-serif');
+    lbl.setAttribute('fill', '#999');
+    lbl.textContent = u;
+    svg.appendChild(lbl);
+
+    // Empty slot
+    if (!occupied.has(u)) {
+      const slot = svgRect(xInner, y, RACK_W_PX, RACK_U_PX, 'var(--rack-slot-empty)', 'rgba(0,0,0,0.05)');
+      slot.setAttribute('class', 'slot-empty');
+      slot.setAttribute('data-unit', u);
+      svg.appendChild(slot);
+
+      // Slot separator line
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', xInner); line.setAttribute('x2', xInner + RACK_W_PX);
+      line.setAttribute('y1', y + RACK_U_PX); line.setAttribute('y2', y + RACK_U_PX);
+      line.setAttribute('stroke', 'rgba(0,0,0,0.08)'); line.setAttribute('stroke-width', '0.5');
+      svg.appendChild(line);
+    }
+  }
+
+  // Rack items
+  rack.items.forEach(item => {
+    const y = uToY(item.startUnit, rack.totalUnits, rack.numberingDir);
+    // For bottom-top: startUnit is the bottom unit, so Y should be the TOP of the item
+    const itemY = rack.numberingDir === 'bottom-top'
+      ? uToY(item.startUnit + item.uHeight - 1, rack.totalUnits, rack.numberingDir)
+      : uToY(item.startUnit, rack.totalUnits, rack.numberingDir);
+
+    const itemH = item.uHeight * RACK_U_PX;
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class', 'rack-item' + (item.id === selectedItemId ? ' selected' : ''));
+    g.setAttribute('data-item-id', item.id);
+    g.setAttribute('draggable', 'true');
+
+    // Background rect
+    const bg = svgRect(xInner, itemY, RACK_W_PX, itemH, item.color, 'rgba(0,0,0,0.25)');
+    g.appendChild(bg);
+
+    // Left accent stripe (darker)
+    const stripe = svgRect(xInner, itemY, 6, itemH, adjustColor(item.color, -30), 'none');
+    g.appendChild(stripe);
+
+    // U dividers within multi-U items
+    for (let d = 1; d < item.uHeight; d++) {
+      const divY = itemY + d * RACK_U_PX;
+      const div = document.createElementNS('http://www.w3.org/2000/svg','line');
+      div.setAttribute('x1', xInner + 6); div.setAttribute('x2', xInner + RACK_W_PX);
+      div.setAttribute('y1', divY); div.setAttribute('y2', divY);
+      div.setAttribute('stroke', 'rgba(255,255,255,0.12)'); div.setAttribute('stroke-width', '0.8');
+      g.appendChild(div);
+    }
+
+    // Main label
+    const textY = itemY + itemH / 2;
+    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x', xInner + 14);
+    label.setAttribute('y', item.uHeight > 1 ? textY - 4 : textY + 4);
+    label.setAttribute('font-size', item.uHeight > 1 ? '11' : '10');
+    label.setAttribute('font-weight', '600');
+    label.setAttribute('font-family', 'system-ui,-apple-system,sans-serif');
+    label.setAttribute('fill', '#ffffff');
+    label.setAttribute('pointer-events', 'none');
+    label.textContent = truncate(item.label, 36);
+    g.appendChild(label);
+
+    // Sub-label (manufacturer / model) for 2U+
+    if (item.uHeight >= 2) {
+      const equip = getEquipment(item.equipmentId);
+      const sub = document.createElementNS('http://www.w3.org/2000/svg','text');
+      sub.setAttribute('x', xInner + 14);
+      sub.setAttribute('y', textY + 10);
+      sub.setAttribute('font-size', '9');
+      sub.setAttribute('font-family', 'system-ui,-apple-system,sans-serif');
+      sub.setAttribute('fill', 'rgba(255,255,255,0.65)');
+      sub.setAttribute('pointer-events', 'none');
+      sub.textContent = equip ? `${equip.manufacturer} · ${equip.uHeight}U` : '';
+      g.appendChild(sub);
+    }
+
+    // U height badge on right
+    const badge = document.createElementNS('http://www.w3.org/2000/svg','text');
+    badge.setAttribute('x', xInner + RACK_W_PX - 8);
+    badge.setAttribute('y', textY + 4);
+    badge.setAttribute('text-anchor', 'end');
+    badge.setAttribute('font-size', '9');
+    badge.setAttribute('font-family', 'system-ui,-apple-system,sans-serif');
+    badge.setAttribute('fill', 'rgba(255,255,255,0.5)');
+    badge.setAttribute('pointer-events', 'none');
+    badge.textContent = `${item.uHeight}U`;
+    g.appendChild(badge);
+
+    svg.appendChild(g);
+  });
+}
+
+function svgRect(x, y, w, h, fill, stroke) {
+  const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  r.setAttribute('x', x); r.setAttribute('y', y);
+  r.setAttribute('width', w); r.setAttribute('height', h);
+  r.setAttribute('fill', fill);
+  if (stroke && stroke !== 'none') r.setAttribute('stroke', stroke);
+  if (stroke && stroke !== 'none') r.setAttribute('stroke-width', '0.5');
+  return r;
+}
+
+function adjustColor(hex, amount) {
+  try {
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    const clamp = v => Math.max(0, Math.min(255, v + amount));
+    return `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`;
+  } catch(e) { return hex; }
+}
+
+function truncate(str, maxLen) {
+  return str.length > maxLen ? str.slice(0, maxLen - 1) + '…' : str;
+}
+
+// ── I. Drag & Drop ────────────────────────────────────────────
+
+function initDragDrop() {
+  const svg = document.getElementById('rack-svg');
+
+  svg.addEventListener('dragover', e => {
+    e.preventDefault();
+    if (!dragPayload) return;
+    const unit = getSvgDropUnit(e);
+    if (unit == null) return;
+    clearDropHighlights();
+    const rack = getActiveRack();
+    if (!rack) return;
+    const uH = dragPayload.uHeight || 1;
+    for (let u = unit; u < unit + uH; u++) {
+      const slot = svg.querySelector(`.slot-empty[data-unit="${u}"]`);
+      if (slot) slot.classList.add('slot-drop-target');
+    }
+  });
+
+  svg.addEventListener('dragleave', e => {
+    if (!e.relatedTarget || !svg.contains(e.relatedTarget)) clearDropHighlights();
+  });
+
+  svg.addEventListener('drop', e => {
+    e.preventDefault();
+    clearDropHighlights();
+    if (!dragPayload) return;
+    const rack = getActiveRack();
+    if (!rack) return;
+    const unit = getSvgDropUnit(e);
+    if (unit == null) return;
+
+    if (dragPayload.type === 'library') {
+      addItemToRack(rack.id, dragPayload.equipmentId, unit);
+    } else if (dragPayload.type === 'rack-item') {
+      moveItem(rack.id, dragPayload.itemId, unit);
+    }
+    dragPayload = null;
+  });
+
+  svg.addEventListener('click', e => {
+    const itemGroup = e.target.closest('.rack-item');
+    if (itemGroup) {
+      selectedItemId = itemGroup.getAttribute('data-item-id');
+      renderRackSVG(getActiveRack());
+      renderPropsPanel();
+      return;
+    }
+    const emptySlot = e.target.closest('.slot-empty');
+    if (emptySlot && selectedItemId === null) {
+      // Deselect if clicking empty space
+    }
+    if (!itemGroup) {
+      selectedItemId = null;
+      renderRackSVG(getActiveRack());
+      renderPropsPanel();
+    }
+  });
+
+  // Within-rack drag: items in SVG
+  svg.addEventListener('dragstart', e => {
+    const itemGroup = e.target.closest('.rack-item');
+    if (!itemGroup) { e.preventDefault(); return; }
+    e.dataTransfer.setData('text/plain', ''); // Safari requirement
+    const itemId = itemGroup.getAttribute('data-item-id');
+    const rack = getActiveRack();
+    const item = rack?.items.find(i => i.id === itemId);
+    if (!item) { e.preventDefault(); return; }
+    dragPayload = { type: 'rack-item', itemId: item.id, uHeight: item.uHeight };
+    itemGroup.classList.add('dragging');
+    setTimeout(() => itemGroup.classList.remove('dragging'), 0);
+  });
+}
+
+function getSvgDropUnit(e) {
+  const rack = getActiveRack();
+  if (!rack) return null;
+  const svg = document.getElementById('rack-svg');
+  const rect = svg.getBoundingClientRect();
+  const relY = e.clientY - rect.top;
+  const unit = svgYToUnit(relY, rack);
+  if (unit < 1 || unit > rack.totalUnits) return null;
+  return unit;
+}
+
+function clearDropHighlights() {
+  document.querySelectorAll('.slot-drop-target').forEach(el => el.classList.remove('slot-drop-target'));
+}
+
+// ── J. Library Panel ──────────────────────────────────────────
+
+function renderLibrary(filterText, filterCat) {
+  const listEl = document.getElementById('lib-list');
+  listEl.innerHTML = '';
+
+  const query = (filterText || '').toLowerCase().trim();
+  const cats = filterCat ? [filterCat] : Object.keys(CAT_LABELS);
+
+  // Check if we have custom items
+  const catList = [...cats];
+  if (!filterCat && customEquipment.length > 0) catList.push('custom');
+
+  catList.forEach(cat => {
+    let items;
+    if (cat === 'custom') {
+      items = customEquipment;
+    } else {
+      items = allEquipment().filter(e => e.category === cat && !e.custom);
+    }
+    if (query) {
+      items = items.filter(e =>
+        e.name.toLowerCase().includes(query) ||
+        e.manufacturer.toLowerCase().includes(query) ||
+        e.model.toLowerCase().includes(query)
+      );
+    }
+    if (items.length === 0 && cat !== 'custom') return;
+
+    const catDiv = document.createElement('div');
+    catDiv.className = 'lib-category';
+    catDiv.dataset.cat = cat;
+
+    const header = document.createElement('div');
+    header.className = 'lib-cat-header';
+    header.innerHTML = `<span>${CAT_LABELS[cat] || cat}</span><span class="cat-arrow">▾</span>`;
+    header.onclick = () => {
+      header.classList.toggle('collapsed');
+      itemsDiv.classList.toggle('hidden');
+    };
+    catDiv.appendChild(header);
+
+    const itemsDiv = document.createElement('div');
+    itemsDiv.className = 'lib-cat-items';
+    items.forEach(equip => {
+      const item = document.createElement('div');
+      item.className = 'lib-item';
+      item.draggable = true;
+      item.innerHTML = `
+        <div class="lib-item-swatch" style="background:${equip.color}"></div>
+        <div class="lib-item-info">
+          <div class="lib-item-name">${equip.name}</div>
+          <div class="lib-item-sub">${equip.manufacturer}</div>
+        </div>
+        <div class="lib-item-u">${equip.uHeight}U</div>
+      `;
+      item.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', '');
+        dragPayload = { type: 'library', equipmentId: equip.id, uHeight: equip.uHeight };
+        item.classList.add('dragging');
+        setTimeout(() => item.classList.remove('dragging'), 0);
+      });
+      item.addEventListener('click', () => {
+        const rack = getActiveRack();
+        if (!rack) { alert('Add a rack first.'); return; }
+        addItemToRack(rack.id, equip.id, null);
+      });
+      if (equip.custom) {
+        const editBtn = document.createElement('button');
+        editBtn.textContent = '✏️';
+        editBtn.title = 'Edit';
+        editBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:11px;padding:2px;';
+        editBtn.onclick = (ev) => { ev.stopPropagation(); openCustomModal(equip); };
+        item.appendChild(editBtn);
+      }
+      itemsDiv.appendChild(item);
+    });
+
+    // Add custom category if no items but show "none yet" only when no search
+    if (items.length === 0 && cat === 'custom') {
+      const msg = document.createElement('div');
+      msg.style.cssText = 'font-size:11px;color:var(--text-tertiary);padding:6px 8px;';
+      msg.textContent = 'No custom equipment yet.';
+      itemsDiv.appendChild(msg);
+    }
+
+    catDiv.appendChild(itemsDiv);
+    listEl.appendChild(catDiv);
+  });
+}
+
+// ── K. Properties Panel ───────────────────────────────────────
+
+function renderPropsPanel() {
+  const rack = getActiveRack();
+  const noSelEl = document.getElementById('props-no-selection');
+  const itemSec = document.getElementById('props-item-section');
+  const summSec = document.getElementById('props-rack-summary');
+
+  if (!rack) {
+    noSelEl.classList.remove('hidden');
+    itemSec.classList.add('hidden');
+    summSec.classList.add('hidden');
+    return;
+  }
+
+  summSec.classList.remove('hidden');
+
+  if (selectedItemId) {
+    const item = rack.items.find(i => i.id === selectedItemId);
+    if (item) {
+      noSelEl.classList.add('hidden');
+      itemSec.classList.remove('hidden');
+      document.getElementById('prop-label').value = item.label;
+      document.getElementById('prop-notes').value = item.notes;
+      document.getElementById('prop-start-u').value = item.startUnit;
+      document.getElementById('prop-start-u').max = rack.totalUnits;
+
+      const equip = getEquipment(item.equipmentId);
+      const detailEl = document.getElementById('prop-equip-detail');
+      if (equip) {
+        detailEl.innerHTML = `
+          <div style="font-size:11px;background:var(--bg-secondary);border-radius:var(--radius-sm);padding:8px 10px;line-height:1.8">
+            <div><strong>${equip.manufacturer}</strong> ${equip.model}</div>
+            <div style="color:var(--text-secondary)">${equip.uHeight}U · ${equip.powerDraw}W · ${equip.weight}kg</div>
+          </div>
+        `;
+      }
+    } else {
+      selectedItemId = null;
+      noSelEl.classList.remove('hidden');
+      itemSec.classList.add('hidden');
+    }
+  } else {
+    noSelEl.classList.remove('hidden');
+    itemSec.classList.add('hidden');
+  }
+
+  // Rack summary
+  const usedU = rack.items.reduce((s, i) => s + i.uHeight, 0);
+  const freeU = rack.totalUnits - usedU;
+  const totalPower = rack.items.reduce((s, i) => {
+    const e = getEquipment(i.equipmentId);
+    return s + (e ? e.powerDraw : 0);
+  }, 0);
+  const totalWeight = rack.items.reduce((s, i) => {
+    const e = getEquipment(i.equipmentId);
+    return s + (e ? e.weight : 0);
+  }, 0);
+  const pct = rack.totalUnits > 0 ? (usedU / rack.totalUnits * 100) : 0;
+
+  document.getElementById('rack-u-label').textContent = `${usedU}U used`;
+  document.getElementById('rack-u-free').textContent = `${freeU}U free`;
+  const fill = document.getElementById('rack-usage-fill');
+  fill.style.width = pct + '%';
+  fill.className = 'usage-bar-fill' + (pct > 90 ? ' over' : pct > 75 ? ' warn' : '');
+
+  document.getElementById('rack-stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${rack.items.length}</div><div class="stat-lbl">Items</div></div>
+    <div class="stat-card"><div class="stat-val">${freeU}</div><div class="stat-lbl">Free U</div></div>
+    <div class="stat-card"><div class="stat-val">${totalPower}W</div><div class="stat-lbl">Power</div></div>
+    <div class="stat-card"><div class="stat-val">${totalWeight.toFixed(1)}kg</div><div class="stat-lbl">Weight</div></div>
+  `;
+}
+
+// ── L. Workspace Rendering ────────────────────────────────────
+
+function renderWorkspace() {
+  const noRackMsg = document.getElementById('no-rack-msg');
+  const controlsBar = document.getElementById('rack-controls-bar');
+  const view2d = document.getElementById('rack-2d-view');
+  const view3d = document.getElementById('rack-3d-view');
+  const rack = getActiveRack();
+
+  if (!rack) {
+    noRackMsg.classList.remove('hidden');
+    controlsBar.classList.add('hidden');
+    view2d.classList.add('hidden');
+    view3d.classList.add('hidden');
+    renderPropsPanel();
+    return;
+  }
+
+  noRackMsg.classList.add('hidden');
+  controlsBar.classList.remove('hidden');
+
+  // Populate rack controls
+  document.getElementById('inp-rack-name').value = rack.name;
+  document.getElementById('sel-rack-units').value = rack.totalUnits;
+  document.getElementById('sel-rack-dir').value = rack.numberingDir;
+
+  // Show correct view
+  if (currentView === '2d') {
+    view2d.classList.remove('hidden');
+    view3d.classList.add('hidden');
+    document.getElementById('btn-2d').classList.add('active');
+    document.getElementById('btn-3d').classList.remove('active');
+    renderRackSVG(rack);
+  } else {
+    view2d.classList.add('hidden');
+    view3d.classList.remove('hidden');
+    document.getElementById('btn-2d').classList.remove('active');
+    document.getElementById('btn-3d').classList.add('active');
+    build3DScene(rack);
+  }
+
+  renderPropsPanel();
+}
+
+// ── M. Export ─────────────────────────────────────────────────
+
+async function exportPNG() {
+  const rack = getActiveRack();
+  if (!rack) { alert('No active rack to export.'); return; }
+  closeExportDropdown();
+
+  const svg = document.getElementById('rack-svg');
+  const w = parseInt(svg.getAttribute('width'));
+  const h = parseInt(svg.getAttribute('height'));
+
+  const svgStr = new XMLSerializer().serializeToString(svg);
+  const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = w * 2; canvas.height = h * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
+    ctx.fillStyle = '#f5f5f3';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${rack.name || 'rack'}-elevation.png`;
+      a.click();
+    }, 'image/png');
+  };
+  img.src = url;
+}
+
+async function exportPDF() {
+  const rack = getActiveRack();
+  if (!rack) { alert('No active rack to export.'); return; }
+  closeExportDropdown();
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW = 210, pageH = 297, margin = 15;
+
+  // Header
+  doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text('AV Rack Elevation', margin, 22);
+  doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(100);
+  doc.text(`Project: ${project.name || '—'}`, margin, 30);
+  doc.text(`Client: ${project.client || '—'}`, margin, 35);
+  doc.text(`Engineer: ${project.engineer || '—'}  ·  ${project.date}`, margin, 40);
+  doc.text(`Rack: ${rack.name}  ·  ${rack.totalUnits}U`, margin, 45);
+  doc.setDrawColor(200); doc.line(margin, 48, pageW - margin, 48);
+
+  // Rack SVG as image
+  const svg = document.getElementById('rack-svg');
+  const svgW = parseInt(svg.getAttribute('width'));
+  const svgH = parseInt(svg.getAttribute('height'));
+  const svgStr = new XMLSerializer().serializeToString(svg);
+  const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+
+  await new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const scale = 2;
+      canvas.width = svgW * scale; canvas.height = svgH * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#f5f5f3';
+      ctx.fillRect(0, 0, svgW, svgH);
+      ctx.drawImage(img, 0, 0, svgW, svgH);
+      URL.revokeObjectURL(url);
+      const imgData = canvas.toDataURL('image/png');
+      const maxImgW = pageW - margin * 2;
+      const maxImgH = 130;
+      const aspect = svgW / svgH;
+      let imgW = maxImgW, imgH = imgW / aspect;
+      if (imgH > maxImgH) { imgH = maxImgH; imgW = imgH * aspect; }
+      doc.addImage(imgData, 'PNG', margin, 52, imgW, imgH);
+      resolve(52 + imgH + 8);
+    };
+    img.src = url;
+  }).then(nextY => {
+    // BOM table
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(0);
+    doc.text('Bill of Materials', margin, nextY);
+    nextY += 6;
+
+    const cols = ['U', 'Label', 'Manufacturer', 'Model', 'W', 'kg'];
+    const colW  = [12, 60, 40, 40, 16, 16];
+    const rowH  = 7;
+
+    // Header row
+    doc.setFillColor(40,40,40); doc.setTextColor(255);
+    doc.rect(margin, nextY, pageW - margin * 2, rowH, 'F');
+    doc.setFontSize(8); doc.setFont('helvetica','bold');
+    let cx = margin + 2;
+    cols.forEach((c, i) => { doc.text(c, cx, nextY + 5); cx += colW[i]; });
+    nextY += rowH;
+
+    doc.setTextColor(0); doc.setFont('helvetica','normal');
+    const sorted = [...rack.items].sort((a,b) => a.startUnit - b.startUnit);
+    sorted.forEach((item, idx) => {
+      if (nextY + rowH > pageH - margin) { doc.addPage(); nextY = margin + 10; }
+      const equip = getEquipment(item.equipmentId);
+      if (idx % 2 === 0) { doc.setFillColor(245,245,243); doc.rect(margin, nextY, pageW - margin*2, rowH, 'F'); }
+      cx = margin + 2;
+      const row = [
+        `${item.startUnit}–${item.startUnit + item.uHeight - 1}`,
+        truncate(item.label, 28),
+        equip ? truncate(equip.manufacturer, 18) : '—',
+        equip ? truncate(equip.model, 18) : '—',
+        equip ? String(equip.powerDraw) : '—',
+        equip ? String(equip.weight) : '—',
+      ];
+      row.forEach((v, i) => { doc.text(v, cx, nextY + 5); cx += colW[i]; });
+      nextY += rowH;
+    });
+
+    // Footer totals
+    nextY += 4;
+    const totalPower = rack.items.reduce((s,i) => { const e=getEquipment(i.equipmentId); return s+(e?e.powerDraw:0); },0);
+    const totalWeight = rack.items.reduce((s,i) => { const e=getEquipment(i.equipmentId); return s+(e?e.weight:0); },0);
+    const usedU = rack.items.reduce((s,i)=>s+i.uHeight,0);
+    doc.setFontSize(9); doc.setTextColor(80);
+    doc.text(`Total: ${rack.items.length} items · ${usedU}U used · ${totalPower}W · ${totalWeight.toFixed(1)}kg`, margin, nextY);
+  });
+
+  doc.save(`${project.name || 'project'}-${rack.name || 'rack'}.pdf`);
+}
+
+function exportCSV() {
+  closeExportDropdown();
+  const rows = [['Rack','U Start','U End','Label','Manufacturer','Model','Category','U Height','Power (W)','Weight (kg)','Depth (mm)','Notes']];
+  project.racks.forEach(rack => {
+    const sorted = [...rack.items].sort((a,b) => a.startUnit - b.startUnit);
+    sorted.forEach(item => {
+      const e = getEquipment(item.equipmentId);
+      rows.push([
+        rack.name, item.startUnit, item.startUnit + item.uHeight - 1,
+        item.label, e?.manufacturer || '', e?.model || '',
+        CAT_LABELS[e?.category] || '',
+        item.uHeight, e?.powerDraw || 0, e?.weight || 0, e?.depth || 0,
+        item.notes
+      ]);
+    });
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${project.name || 'project'}-bom.csv`;
+  a.click();
+}
+
+function exportJSON() {
+  closeExportDropdown();
+  const data = JSON.stringify({ project, customEquipment }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${project.name || 'project'}.json`;
+  a.click();
+}
+
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.project) project = data.project;
+      if (data.customEquipment) customEquipment = data.customEquipment;
+      selectedRackId = project.racks[0]?.id || null;
+      selectedItemId = null;
+      autoSave();
+      syncProjectInputs();
+      buildRackTabBar();
+      renderLibrary('', null);
+      renderWorkspace();
+    } catch(err) { alert('Failed to load JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+// ── N. Custom Equipment Modal ─────────────────────────────────
+
+function openCustomModal(editEquip) {
+  document.getElementById('modal-title').textContent = editEquip ? 'Edit Equipment' : 'Add Custom Equipment';
+  document.getElementById('modal-edit-id').value = editEquip?.id || '';
+  document.getElementById('m-name').value = editEquip?.name || '';
+  document.getElementById('m-mfr').value = editEquip?.manufacturer || '';
+  document.getElementById('m-model').value = editEquip?.model || '';
+  document.getElementById('m-cat').value = editEquip?.category || 'amp';
+  document.getElementById('m-u').value = editEquip?.uHeight || 1;
+  document.getElementById('m-color').value = editEquip?.color || '#444444';
+  document.getElementById('m-power').value = editEquip?.powerDraw || 0;
+  document.getElementById('m-weight').value = editEquip?.weight || 0;
+  document.getElementById('m-depth').value = editEquip?.depth || 0;
+  document.getElementById('modal-backdrop').classList.remove('hidden');
+  document.getElementById('m-name').focus();
+}
+
+function saveCustomEquipment() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { alert('Name is required.'); return; }
+  const editId = document.getElementById('modal-edit-id').value;
+  const equip = {
+    id: editId || uid(),
+    name,
+    manufacturer: document.getElementById('m-mfr').value.trim(),
+    model: document.getElementById('m-model').value.trim(),
+    category: document.getElementById('m-cat').value,
+    uHeight: Math.max(1, parseInt(document.getElementById('m-u').value) || 1),
+    color: document.getElementById('m-color').value,
+    powerDraw: parseFloat(document.getElementById('m-power').value) || 0,
+    weight: parseFloat(document.getElementById('m-weight').value) || 0,
+    depth: parseFloat(document.getElementById('m-depth').value) || 0,
+    custom: true
+  };
+  if (editId) {
+    const idx = customEquipment.findIndex(e => e.id === editId);
+    if (idx >= 0) customEquipment[idx] = equip;
+    else customEquipment.push(equip);
+  } else {
+    customEquipment.push(equip);
+  }
+  autoSave();
+  renderLibrary(document.getElementById('lib-search').value, null);
+  document.getElementById('modal-backdrop').classList.add('hidden');
+}
+
+// ── O. 3D View ────────────────────────────────────────────────
+
+function loadScript(url) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error(`Failed to load ${url}`));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensureThreeJS() {
+  if (threeLoaded) return true;
+  const canvas = document.getElementById('three-canvas');
+  canvas.insertAdjacentHTML('afterend', '<div class="three-error" id="three-loading">Loading 3D…</div>');
+  try {
+    await loadScript('https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/OrbitControls.js');
+    threeLoaded = true;
+    const loadMsg = document.getElementById('three-loading');
+    if (loadMsg) loadMsg.remove();
+    return true;
+  } catch(e) {
+    const loadMsg = document.getElementById('three-loading');
+    if (loadMsg) loadMsg.textContent = '3D unavailable — CDN could not be reached.';
+    return false;
+  }
+}
+
+async function build3DScene(rack) {
+  const ok = await ensureThreeJS();
+  if (!ok) return;
+
+  dispose3DScene();
+
+  const canvas = document.getElementById('three-canvas');
+  const w = canvas.clientWidth, h = canvas.clientHeight || 500;
+  canvas.width = w; canvas.height = h;
+
+  threeRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  threeRenderer.setPixelRatio(window.devicePixelRatio);
+  threeRenderer.setSize(w, h);
+  threeRenderer.setClearColor(0x1a1a1a);
+
+  threeScene = new THREE.Scene();
+  threeCamera = new THREE.PerspectiveCamera(45, w / h, 0.1, 1000);
+  threeCamera.position.set(0.6, 0, 1.2);
+
+  threeControls = new THREE.OrbitControls(threeCamera, threeRenderer.domElement);
+  threeControls.enableDamping = true;
+  threeControls.dampingFactor = 0.08;
+
+  // Lighting
+  threeScene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(1, 2, 2);
+  threeScene.add(dirLight);
+
+  // Scale: 1U = 0.02 units, rack width = 0.48, depth = 0.5
+  const U3 = 0.022;
+  const RW = 0.48, RD = 0.5;
+  const totalH = rack.totalUnits * U3;
+
+  // Rack cabinet
+  const cabinetGeo = new THREE.BoxGeometry(RW + 0.04, totalH + 0.04, RD + 0.04);
+  const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.6, roughness: 0.4 });
+  const cabinet = new THREE.Mesh(cabinetGeo, cabinetMat);
+  cabinet.position.set(0, 0, 0);
+  threeScene.add(cabinet);
+
+  // Inner background
+  const innerGeo = new THREE.BoxGeometry(RW, totalH, 0.01);
+  const innerMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+  const inner = new THREE.Mesh(innerGeo, innerMat);
+  inner.position.set(0, 0, RD / 2 + 0.005);
+  threeScene.add(inner);
+
+  // Equipment items
+  rack.items.forEach(item => {
+    const iH = item.uHeight * U3;
+    // In bottom-top numbering, unit 1 is at the bottom
+    const yOffset = rack.numberingDir === 'bottom-top'
+      ? -totalH / 2 + (item.startUnit - 1) * U3 + iH / 2
+      : totalH / 2 - (item.startUnit - 1) * U3 - iH / 2;
+
+    const color = parseInt(item.color.replace('#','0x'));
+    const geo = new THREE.BoxGeometry(RW - 0.01, iH - 0.002, RD - 0.05);
+    const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.3, roughness: 0.6 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(0, yOffset, 0.025);
+    threeScene.add(mesh);
+  });
+
+  // Center camera
+  threeCamera.lookAt(0, 0, 0);
+  threeControls.target.set(0, 0, 0);
+  threeControls.update();
+
+  function animate() {
+    threeAnimId = requestAnimationFrame(animate);
+    threeControls.update();
+    threeRenderer.render(threeScene, threeCamera);
+  }
+  animate();
+}
+
+function dispose3DScene() {
+  if (threeAnimId) { cancelAnimationFrame(threeAnimId); threeAnimId = null; }
+  if (threeScene) {
+    threeScene.traverse(obj => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+        else obj.material.dispose();
+      }
+    });
+  }
+  if (threeRenderer) { threeRenderer.dispose(); threeRenderer = null; }
+  threeScene = null; threeCamera = null; threeControls = null;
+}
+
+async function toggleView(mode) {
+  currentView = mode;
+  renderWorkspace();
+}
+
+// ── P. UI Helpers ─────────────────────────────────────────────
+
+function closeExportDropdown() {
+  document.getElementById('export-dropdown').classList.add('hidden');
+}
+
+function syncProjectInputs() {
+  document.getElementById('inp-proj-name').value = project.name;
+  document.getElementById('inp-client').value = project.client;
+  document.getElementById('inp-engineer').value = project.engineer;
+}
+
+// ── Q. Init & Event Wiring ────────────────────────────────────
+
+function init() {
+  loadFromStorage();
+  syncProjectInputs();
+  buildRackTabBar();
+  renderLibrary('', null);
+
+  if (!selectedRackId && project.racks.length > 0) {
+    selectedRackId = project.racks[0].id;
+  }
+
+  renderWorkspace();
+  initDragDrop();
+
+  // Project meta inputs
+  document.getElementById('inp-proj-name').addEventListener('input', e => {
+    project.name = e.target.value; autoSave();
+    buildRackTabBar(); // tab titles may not change, but still
+  });
+  document.getElementById('inp-client').addEventListener('input', e => { project.client = e.target.value; autoSave(); });
+  document.getElementById('inp-engineer').addEventListener('input', e => { project.engineer = e.target.value; autoSave(); });
+
+  // Rack controls
+  document.getElementById('inp-rack-name').addEventListener('input', e => {
+    const r = getActiveRack(); if (!r) return;
+    r.name = e.target.value; autoSave(); buildRackTabBar();
+  });
+  document.getElementById('sel-rack-units').addEventListener('change', e => {
+    const r = getActiveRack(); if (!r) return;
+    r.totalUnits = parseInt(e.target.value);
+    autoSave(); renderRackSVG(r); renderPropsPanel();
+  });
+  document.getElementById('sel-rack-dir').addEventListener('change', e => {
+    const r = getActiveRack(); if (!r) return;
+    r.numberingDir = e.target.value; autoSave(); renderRackSVG(r);
+  });
+  document.getElementById('btn-delete-rack').addEventListener('click', () => {
+    const r = getActiveRack(); if (!r) return; deleteRack(r.id);
+  });
+
+  // View toggle buttons
+  document.getElementById('btn-2d').addEventListener('click', () => toggleView('2d'));
+  document.getElementById('btn-3d').addEventListener('click', () => toggleView('3d'));
+  document.getElementById('btn-view-toggle').addEventListener('click', () => {
+    toggleView(currentView === '2d' ? '3d' : '2d');
+    document.getElementById('btn-view-toggle').textContent = currentView === '2d' ? '3D View' : '2D View';
+  });
+
+  // Library search
+  document.getElementById('lib-search').addEventListener('input', e => {
+    renderLibrary(e.target.value, null);
+  });
+
+  // Add custom
+  document.getElementById('btn-add-custom').addEventListener('click', () => openCustomModal(null));
+
+  // Modal
+  document.getElementById('btn-modal-cancel').addEventListener('click', () => {
+    document.getElementById('modal-backdrop').classList.add('hidden');
+  });
+  document.getElementById('btn-modal-save').addEventListener('click', saveCustomEquipment);
+  document.getElementById('modal-backdrop').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-backdrop'))
+      document.getElementById('modal-backdrop').classList.add('hidden');
+  });
+
+  // Props panel live updates
+  document.getElementById('prop-label').addEventListener('input', e => {
+    updateItemProp('label', e.target.value);
+  });
+  document.getElementById('prop-notes').addEventListener('input', e => {
+    updateItemProp('notes', e.target.value);
+  });
+  document.getElementById('prop-start-u').addEventListener('change', e => {
+    updateItemProp('startUnit', e.target.value);
+    renderPropsPanel();
+  });
+  document.getElementById('btn-remove-item').addEventListener('click', () => {
+    const r = getActiveRack(); if (!r || !selectedItemId) return;
+    removeItem(r.id, selectedItemId);
+  });
+
+  // Export dropdown
+  document.getElementById('btn-export-drop').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('export-dropdown').classList.toggle('hidden');
+  });
+  document.addEventListener('click', () => closeExportDropdown());
+
+  // JSON import
+  document.getElementById('btn-import-json').addEventListener('click', () => {
+    document.getElementById('file-import').click();
+  });
+  document.getElementById('file-import').addEventListener('change', e => {
+    if (e.target.files[0]) { importJSON(e.target.files[0]); e.target.value = ''; }
+  });
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.getElementById('modal-backdrop').classList.add('hidden');
+      closeExportDropdown();
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId) {
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
+      const r = getActiveRack(); if (!r) return;
+      removeItem(r.id, selectedItemId);
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
